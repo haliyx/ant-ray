@@ -121,5 +121,15 @@ AgentManager::~AgentManager() {
   }
 }
 
+void AgentManager::GetWorkersInfo(rpc::GetWorkersInfoReply *reply) {
+  reply->set_status(rpc::AGENT_RPC_STATUS_OK);
+  fill_workers_info_(reply);
+}
+
+void AgentManager::ReportLocalRuntimeResources(
+    rpc::ReportLocalRuntimeResourcesRequest request) {
+  runtime_resources_updated_callback_(request);
+}
+
 }  // namespace raylet
 }  // namespace ray

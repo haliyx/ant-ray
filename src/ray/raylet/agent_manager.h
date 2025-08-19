@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "ray/common/id.h"
+#include "ray/rpc/agent_manager/agent_manager_server.h"
 #include "ray/util/process.h"
 #include "src/ray/protobuf/gcs.pb.h"
 
@@ -58,11 +59,20 @@ class AgentManager {
       Options options,
       DelayExecutorFn delay_executor,
       std::function<void(const rpc::NodeDeathInfo &)> shutdown_raylet_gracefully,
-      bool start_agent = true /* for test */)
+      bool start_agent = true /* for test */,
+      std::function<void(rpc::GetWorkersInfoReply *reply)> fill_workers_info =
+          [](rpc::GetWorkersInfoReply *) { return; },
+      std::function<void(const rpc::ReportLocalRuntimeResourcesRequest &)>
+          runtime_resources_updated_callback =
+              [](const rpc::ReportLocalRuntimeResourcesRequest &) { return; })
       : options_(std::move(options)),
         delay_executor_(std::move(delay_executor)),
+
         shutdown_raylet_gracefully_(std::move(shutdown_raylet_gracefully)),
-        fate_shares_(options_.fate_shares) {
+        fate_shares_(options_.fate_shares),
+        fill_workers_info_(std::move(fill_workers_info)),
+        runtime_resources_updated_callback_(
+            std::move(runtime_resources_updated_callback)) {
     if (options_.agent_name.empty()) {
       RAY_LOG(FATAL) << "AgentManager agent_name must not be empty.";
     }
@@ -75,6 +85,10 @@ class AgentManager {
   }
   ~AgentManager();
 
+  void GetWorkersInfo(rpc::GetWorkersInfoReply *reply);
+
+  void ReportLocalRuntimeResources(rpc::ReportLocalRuntimeResourcesRequest request);
+
  private:
   void StartAgent();
 
@@ -86,6 +100,39 @@ class AgentManager {
   // If true, when the agent dies, raylet kills itself.
   std::atomic<bool> fate_shares_;
   std::unique_ptr<std::thread> monitor_thread_;
+
+  std::function<void(rpc::GetWorkersInfoReply *reply)> fill_workers_info_;
+
+  /// The callback for each update of the (local) runtime resources.
+  std::function<void(const rpc::ReportLocalRuntimeResourcesRequest &)>
+      runtime_resources_updated_callback_;
+};
+
+class AgentManagerServiceHandlerImpl : public rpc::AgentManagerServiceHandler {
+ public:
+  explicit AgentManagerServiceHandlerImpl(std::shared_ptr<AgentManager> manager)
+      : agent_manager_(std::move(manager)) {}
+
+  void HandleGetWorkersInfo(rpc::GetWorkersInfoRequest request,
+                            rpc::GetWorkersInfoReply *reply,
+                            rpc::SendReplyCallback send_reply_callback) override {
+    RAY_LOG(DEBUG) << "HandleGetWorkersInfo";
+    agent_manager_->GetWorkersInfo(reply);
+    send_reply_callback(ray::Status::OK(), nullptr, nullptr);
+  }
+
+  void HandleReportLocalRuntimeResources(
+      rpc::ReportLocalRuntimeResourcesRequest request,
+      rpc::ReportLocalRuntimeResourcesReply *reply,
+      rpc::SendReplyCallback send_reply_callback) override {
+    RAY_LOG(DEBUG) << "HandleReportLocalRuntimeResources";
+    agent_manager_->ReportLocalRuntimeResources(request);
+    reply->set_status(rpc::AGENT_RPC_STATUS_OK);
+    send_reply_callback(ray::Status::OK(), nullptr, nullptr);
+  }
+
+ private:
+  std::shared_ptr<AgentManager> agent_manager_;
 };
 
 }  // namespace raylet

@@ -184,6 +184,10 @@ NodeManager::NodeManager(
       node_manager_server_("NodeManager",
                            config.node_manager_port,
                            config.node_manager_address == "127.0.0.1"),
+      node_manager_service_(io_service, *this),
+      agent_manager_service_handler_(
+          new AgentManagerServiceHandlerImpl(dashboard_agent_manager_)),
+      agent_manager_service_(io_service, *agent_manager_service_handler_),
       local_object_manager_(
           self_node_id_,
           config.node_manager_address,
@@ -323,6 +327,7 @@ NodeManager::NodeManager(
       std::make_unique<rpc::NodeManagerGrpcService>(io_service, *this), false);
   node_manager_server_.RegisterService(
       std::make_unique<syncer::RaySyncerService>(ray_syncer_));
+  node_manager_server_.RegisterService(agent_manager_service_);
   node_manager_server_.Run();
   // GCS will check the health of the service named with the node id.
   // Fail to setup this will lead to the health check failure.
@@ -3278,7 +3283,48 @@ std::unique_ptr<AgentManager> NodeManager::CreateDashboardAgentManager(
       [this](std::function<void()> task, uint32_t delay_ms) {
         return execute_after(io_service_, task, std::chrono::milliseconds(delay_ms));
       },
-      shutdown_raylet_gracefully_);
+      shutdown_raylet_gracefully_,
+      /*start_agent=*/true,
+      /*fill_workers_info=*/
+      [this](rpc::GetWorkersInfoReply *reply) {
+        const auto workers =
+            worker_pool_.GetAllRegisteredWorkers(/*filter_dead_workers=*/true);
+        for (const auto &worker : workers) {
+          if (worker->GetWorkerType() == rpc::WorkerType::WORKER) {
+            auto mutable_worker_info = reply->mutable_worker_info_list()->Add();
+            mutable_worker_info->set_pid(int32_t(worker->GetProcess().GetId()));
+            mutable_worker_info->set_language(rpc::Language_Name(worker->GetLanguage()));
+            mutable_worker_info->set_job_id(worker->GetAssignedJobId().Hex());
+          }
+        }
+      },
+      /*runtime_resources_updated_callback=*/
+      [this](const rpc::ReportLocalRuntimeResourcesRequest &request) {
+        io_service_.post(
+            [this, request]() {
+              absl::flat_hash_map<int, ResourceRequest> worker_runtime_resources;
+              for (const auto &worker : request.worker_stat_list()) {
+                auto &worker_resources = worker_runtime_resources[worker.pid()];
+                double mem_tail = 1.0 * worker.memory_tail() / 1ULL;
+                worker_resources.Set(scheduling::ResourceID::RuntimeMemory(), mem_tail);
+                worker_resources.Set(scheduling::ResourceID::RuntimeCPU(),
+                                     double(worker.cpu_tail() / 100.0));
+                RAY_LOG(DEBUG) << "  |- Worker " << worker.pid()
+                               << ": runtime resources are "
+                               << worker_resources.DebugString();
+              }
+              for (auto &worker_entry : leased_workers_) {
+                auto iter = worker_runtime_resources.find(
+                    worker_entry.second->GetProcess().GetId());
+                if (iter != worker_runtime_resources.end()) {
+                  worker_entry.second->UpdateRuntimeResources(iter->second);
+                }
+              }
+              cluster_resource_scheduler_->GetLocalResourceManager()
+                  .UpdateRuntimeResource(worker_runtime_resources);
+            },
+            "NodeManager.RuntimeResourcesUpdatedCallback");
+      });
 }
 
 std::unique_ptr<AgentManager> NodeManager::CreateRuntimeEnvAgentManager(

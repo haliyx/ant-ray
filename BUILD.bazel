@@ -376,6 +376,7 @@ ray_cc_library(
     name = "reporter_rpc",
     hdrs = [
         "src/ray/rpc/metrics_agent_client.h",
+        # "src/ray/rpc/reporter/*.h",
     ],
     deps = [
         ":grpc_common_lib",
@@ -383,6 +384,30 @@ ray_cc_library(
         "//src/ray/common:status",
         "@boost//:asio",
         "@boost//:thread",
+        "@com_github_grpc_grpc//:grpc++",
+    ],
+)
+
+# Agent manager.
+cc_grpc_library(
+    name = "agent_manager_cc_grpc",
+    srcs = ["//src/ray/protobuf:agent_manager_proto"],
+    grpc_only = True,
+    deps = ["//src/ray/protobuf:agent_manager_cc_proto"],
+)
+
+cc_library(
+    name = "agent_manager_rpc",
+    hdrs = glob([
+        "src/ray/rpc/agent_manager/*.h",
+    ]),
+    copts = COPTS,
+    strip_include_prefix = "src",
+    deps = [
+        ":agent_manager_cc_grpc",
+        ":grpc_common_lib",
+        ":ray_common",
+        "@boost//:asio",
         "@com_github_grpc_grpc//:grpc++",
     ],
 )
@@ -489,9 +514,11 @@ ray_cc_library(
     srcs = ["src/ray/raylet/agent_manager.cc"],
     hdrs = ["src/ray/raylet/agent_manager.h"],
     deps = [
+        ":agent_manager_rpc",
         "//src/ray/common:id",
         "//src/ray/common:ray_config",
         "//src/ray/protobuf:gcs_cc_proto",
+        "//src/ray/protobuf:agent_manager_cc_proto",
         "//src/ray/util",
         "//src/ray/util:event",
         "//src/ray/util:logging",
@@ -587,6 +614,7 @@ ray_cc_library(
 ray_cc_library(
     name = "raylet_lib",
     srcs = [
+        "src/ray/raylet/agent_manager.cc",
         "src/ray/raylet/dependency_manager.cc",
         "src/ray/raylet/local_task_manager.cc",
         "src/ray/raylet/node_manager.cc",
@@ -599,6 +627,7 @@ ray_cc_library(
         "src/ray/raylet/virtual_cluster_manager.cc",
     ],
     hdrs = [
+        "src/ray/raylet/agent_manager.h",
         "src/ray/raylet/dependency_manager.h",
         "src/ray/raylet/local_task_manager.h",
         "src/ray/raylet/node_manager.h",
@@ -1056,6 +1085,7 @@ filegroup(
         "//src/ray/protobuf:instance_manager_py_proto",
         "//src/ray/protobuf:node_manager_py_proto",
         "//src/ray/protobuf:metrics_service_py_proto",
+        "//src/ray/protobuf:agent_manager_py_proto",
         "//src/ray/protobuf:ray_client_py_proto",
         "//src/ray/protobuf:reporter_py_proto",
         "//src/ray/protobuf:runtime_env_agent_py_proto",

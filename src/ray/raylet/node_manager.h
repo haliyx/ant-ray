@@ -49,6 +49,7 @@
 #include "ray/raylet/worker_killing_policy.h"
 #include "ray/raylet/worker_pool.h"
 #include "ray/raylet_client/raylet_client.h"
+#include "ray/rpc/agent_manager/agent_manager_server.h"
 #include "ray/rpc/node_manager/node_manager_server.h"
 #include "ray/rpc/worker/core_worker_client_pool.h"
 #include "ray/util/throttler.h"
@@ -830,7 +831,7 @@ class NodeManager : public rpc::NodeManagerServiceHandler,
   /// A manager for the dashboard agent.
   /// Note: using a pointer because the agent must know node manager's port to start, this
   /// means the AgentManager have to start after node_manager_server_ starts.
-  std::unique_ptr<AgentManager> dashboard_agent_manager_;
+  std::shared_ptr<AgentManager> dashboard_agent_manager_;
 
   /// A manager for the runtime env agent.
   /// Ditto for the pointer argument.
@@ -838,6 +839,13 @@ class NodeManager : public rpc::NodeManagerServiceHandler,
 
   /// The RPC server.
   rpc::GrpcServer node_manager_server_;
+
+  /// The node manager RPC service.
+  rpc::NodeManagerGrpcService node_manager_service_;
+
+  /// The agent manager RPC service.
+  std::unique_ptr<rpc::AgentManagerServiceHandler> agent_manager_service_handler_;
+  rpc::AgentManagerGrpcService agent_manager_service_;
 
   /// Manages all local objects that are pinned (primary
   /// copies), freed, and/or spilled.

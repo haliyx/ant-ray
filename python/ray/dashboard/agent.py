@@ -12,7 +12,11 @@ import ray.dashboard.utils as dashboard_utils
 from ray._common.utils import get_or_create_event_loop
 from ray._private import logging_utils
 from ray._private.process_watcher import create_check_raylet_task
-from ray._private.ray_constants import AGENT_GRPC_MAX_MESSAGE_LENGTH
+from ray._private.ray_constants import (
+    AGENT_GRPC_MAX_MESSAGE_LENGTH,
+    GLOBAL_GRPC_OPTIONS,
+)
+from ray.core.generated import agent_manager_pb2_grpc
 from ray._private.ray_logging import setup_component_logger
 from ray._raylet import GcsClient
 
@@ -66,6 +70,13 @@ class DashboardAgent:
         self.server = None
         # http_server is None in minimal.
         self.http_server = None
+
+        # Setup raylet channel
+        options = GLOBAL_GRPC_OPTIONS
+        self.aiogrpc_raylet_channel = ray._private.utils.init_grpc_channel(
+            f"{self.ip}:{self.node_manager_port}", options, asynchronous=True
+        )
+        self.raylet_stub = None
 
         # Used by the agent and sub-modules.
         self.gcs_client = GcsClient(
@@ -201,7 +212,12 @@ class DashboardAgent:
                 namespace=ray_constants.KV_NAMESPACE_DASHBOARD,
             )
 
-            await asyncio.gather(put_by_node_id, put_by_ip)
+
+        self.raylet_stub = agent_manager_pb2_grpc.AgentManagerServiceStub(
+            self.aiogrpc_raylet_channel
+        )
+        await asyncio.gather(put_by_node_id, put_by_ip)
+        
 
         tasks = [m.run(self.server) for m in modules]
 
