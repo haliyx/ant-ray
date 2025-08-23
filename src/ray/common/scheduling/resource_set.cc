@@ -198,6 +198,13 @@ NodeResourceSet &NodeResourceSet::Set(ResourceID resource_id, FixedPoint value) 
   return *this;
 }
 
+// NodeResourceSet &NodeResourceSet::SetRuntimeResources(ResourceID resource_id,
+// FixedPoint value) {
+//   runtime_resources_[resource_id] = value;
+
+//   return *this;
+// }
+
 FixedPoint NodeResourceSet::Get(ResourceID resource_id) const {
   auto it = resources_.find(resource_id);
   if (it == resources_.end()) {

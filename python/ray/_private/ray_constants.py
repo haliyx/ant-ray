@@ -8,10 +8,6 @@ import sys
 logger = logging.getLogger(__name__)
 
 
-def gcs_task_scheduling_enabled():
-    return not os.environ.get("RAY_GCS_TASK_SCHEDULING_ENABLED") == "false"
-
-
 def runtime_resource_scheduling_enabled():
     return not os.environ.get("RAY_runtime_resource_scheduling_enabled") == "false"
 

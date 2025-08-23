@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import copy
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -26,6 +27,9 @@ from ray._private.usage.usage_constants import CLUSTER_METADATA_KEY
 from ray._private.utils import init_grpc_channel
 from ray.autoscaler._private.commands import debug_status
 from ray.core.generated import reporter_pb2, reporter_pb2_grpc
+from ray.core.generated import common_pb2
+from ray.core.generated import gcs_service_pb2, gcs_service_pb2_grpc
+from ray.dashboard.utils import async_loop_forever
 from ray.dashboard.consts import GCS_RPC_TIMEOUT_SECONDS
 from ray.dashboard.modules.reporter.utils import HealthChecker
 from ray.dashboard.state_aggregator import StateAPIManager
@@ -33,6 +37,10 @@ from ray.dashboard.subprocesses.module import SubprocessModule
 from ray.dashboard.subprocesses.routes import SubprocessRouteTable as routes
 from ray.util.state.common import ListApiOptions
 from ray.util.state.state_manager import StateDataSourceClient
+import ray.dashboard.modules.reporter.reporter_consts as reporter_consts
+from ray._private.ray_constants import (
+    gcs_actor_scheduling_enabled,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +70,8 @@ class ReportHead(SubprocessModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._ray_config = None
+        # ip:port -> stub
+        self._runtime_stubs = {}
         # TODO(fyrestone): Avoid using ray.state in dashboard, it's not
         # asynchronous and will lead to low performance. ray disconnect()
         # will be hang when the ray.state is connected and the GCS is exit.
@@ -783,6 +793,85 @@ class ReportHead(SubprocessModule):
         return dashboard_optional_utils.rest_response(
             status_code=status_code, message=message
         )
+    @async_loop_forever(reporter_consts.REPORTER_UPDATE_INTERVAL_MS / 1000)
+    async def _get_node_stubs_from_gcs(self):
+        option = ListApiOptions(detail=True, timeout=10)
+        response = await self._state_api.list_nodes(option=option)
+        nodes = response.result
+
+        for node in nodes:
+            node_id = node["node_id"]
+            addrs = await self._get_stub_address_by_node_id(NodeID.from_hex(node_id))
+            if not addrs:
+                continue
+            _, ip, _, grpc_port = addrs
+            ip_port = f"{ip}:{grpc_port}"
+            stub = self._make_stub(ip_port)
+            self._runtime_stubs[(ip, grpc_port)] = stub
+
+    async def _report_cluster_runtime_resources(self, nodes_with_runtime_updated):
+        """
+        Report the runtime resources of the cluster to the GCS.
+        This is called when the runtime resources of a node are updated.
+        """
+        node_runtime_resources_list = []
+        for node_id in nodes_with_runtime_updated:
+            data = DataSource.node_physical_stats[node_id]
+            worker_stat_list = []
+            for stat in data.get("workerRuntime"):
+                worker_stat = common_pb2.WorkerRuntimeStat(
+                    pid=int(stat["pid"]),
+                    memory_tail=int(stat["memory_tail"]),
+                    cpu_tail=stat["cpu_tail"],
+                )
+                worker_stat_list.append(worker_stat)
+            node_runtime_resources = gcs_service_pb2.NodeRuntimeResources(
+                node_id=bytes.fromhex(node_id),
+                worker_stat_list=worker_stat_list,
+            )
+            node_runtime_resources_list.append(node_runtime_resources)
+        request = gcs_service_pb2.ReportClusterRuntimeResourcesRequest(
+            node_runtime_resources_list=node_runtime_resources_list
+        )
+        reply = await self._gcs_runtime_resource_info_stub.ReportClusterRuntimeResourcesRequest(
+            request
+        )
+        if reply.status.code == 0:
+            logger.info("Succeeded to report runtime resources")
+        else:
+            logger.info("Failed to report runtime resources")
+
+    @async_loop_forever(reporter_consts.REPORTER_UPDATE_INTERVAL_MS / 1000)
+    async def _update_node_physical_stats(self):
+        runtime_stubs = copy.copy(self._runtime_stubs)
+        ips = []
+        tasks = []
+        for key, stub in runtime_stubs.items():
+            task = stub.GetReportData(reporter_pb2.GetReportDataRequest(), timeout=60)
+            tasks.append(task)
+            ips.append(key[0])
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        nodes_with_runtime_updated = []
+        for ip, r in zip(ips, results):
+            if not isinstance(r, Exception):
+                if r.success and r.data:
+                    data = msgpack.loads(r.data)
+                    if data:
+                        DataSource.node_physical_stats.update(data)
+                        node_id = list(data.keys())[0]
+                        if "workerRuntime" in data[node_id]:
+                            nodes_with_runtime_updated.append(node_id)
+                elif r.error:
+                    logger.error(
+                        "GetReportData from node %s encountered error:\n %s",
+                        ip,
+                        r.error,
+                    )
+            else:
+                logger.error("GetReportData from node %s encountered error: %s", ip, r)
+        if len(nodes_with_runtime_updated) > 0:
+            await self._report_cluster_runtime_resources(nodes_with_runtime_updated)
 
     async def _get_stub_address_by_node_id(
         self, node_id: NodeID
@@ -837,6 +926,18 @@ class ReportHead(SubprocessModule):
             self._state_api_data_source_client,
             self._executor,
         )
+
+        if gcs_actor_scheduling_enabled():
+            self._gcs_runtime_resource_info_stub = (
+                gcs_service_pb2_grpc.RuntimeResourceInfoGcsServiceStub(
+                    self.aiogrpc_gcs_channel
+                )
+            )
+
+        tasks = [
+            asyncio.create_task(self._update_node_physical_stats()),
+            asyncio.create_task(self._get_node_stubs_from_gcs()),
+        ]
 
         # Need daemon True to avoid dashboard hangs at exit.
         self.service_discovery.daemon = True

@@ -31,6 +31,7 @@
 #include "ray/gcs/gcs_server/gcs_virtual_cluster_autoscaler_state_manager.h"
 #include "ray/gcs/gcs_server/gcs_virtual_cluster_manager.h"
 #include "ray/gcs/gcs_server/gcs_worker_manager.h"
+#include "ray/gcs/gcs_server/gcs_runtime_resource_manager.h"
 #include "ray/gcs/gcs_server/store_client_kv.h"
 #include "ray/pubsub/publisher.h"
 #include "ray/util/util.h"
@@ -56,6 +57,7 @@ GcsServer::GcsServer(const ray::gcs::GcsServerConfig &config,
     : io_context_provider_(main_service),
       config_(config),
       storage_type_(GetStorageType()),
+      main_service_(main_service),
       rpc_server_(config.grpc_server_name,
                   config.grpc_server_port,
                   config.node_ip_address == "127.0.0.1",
@@ -243,6 +245,9 @@ void GcsServer::DoStart(const GcsInitData &gcs_init_data) {
 
   // Init usage stats client.
   InitUsageStatsClient();
+
+  /// Init runtime resource manager.
+  InitRuntimeResourceManager();
 
   RecordMetrics();
 
@@ -638,6 +643,47 @@ void GcsServer::InitUsageStatsClient() {
   gcs_task_manager_->SetUsageStatsClient(usage_stats_client_.get());
 }
 
+void GcsServer::InitRuntimeResourceManager() {
+  if (!RayConfig::instance().gcs_actor_scheduling_enabled()) {
+    return;
+  }
+
+  RAY_CHECK(gcs_table_storage_ && cluster_resource_scheduler_);
+  gcs_runtime_resource_manager_ = std::make_shared<GcsRuntimeResourceManager>(
+      // *gcs_table_storage_,
+      cluster_resource_scheduler_->GetClusterResourceManager(),
+      /*runtime_resources_updated_callback=*/
+      [this](const rpc::ReportClusterRuntimeResourcesRequest &request) {
+        auto node_runtime_resources_map = std::make_shared<
+          absl::flat_hash_map<NodeID, rpc::NodeRuntimeResources>>();
+        for (const auto &worker_resources_entry : request.node_runtime_resources_list()) {
+            if(worker_resources_entry.worker_stat_list_size() > 0){
+                NodeID node_id = NodeID::FromBinary(worker_resources_entry.node_id());
+                auto &node_runtime_resources = (*node_runtime_resources_map)[node_id];
+                node_runtime_resources = worker_resources_entry;
+            }           
+        }
+        main_service_.post(
+            [this, node_runtime_resources_map]() {
+              gcs_runtime_resource_manager_->RecordRuntimeResources(node_runtime_resources_map);
+              
+            },
+            "gcsRuntimeResourceManager.ClusterRuntimeResourcesUpdatedCallback");
+      });
+
+  //todo(haimi) add_runtime_resources_fo
+  // gcs_init_data 没有runtime resource数据，参考 https://code.alipay.com/Arc/X/commit/01f734bdd03d864c202e90378b33d76842a36cac
+  // gcs_runtime_resource_manager_->Initialize(gcs_init_data);
+
+  // Subtract the deta resource, it's paired with `AddResourceDelta()`(in initgcsresourcemanager).
+  // gcs_resource_manager_->SubtractResourceDelta();
+
+  // Register service.
+  runtime_resource_service_.reset(new rpc::RuntimeResourceInfoGrpcService(
+      io_context_provider_.GetDefaultIOContext(), *gcs_runtime_resource_manager_));
+  rpc_server_.RegisterService(std::move(runtime_resource_service_));
+}
+
 void GcsServer::InitKVManager() {
   // TODO(yic): Use a factory with configs
   std::unique_ptr<InternalKVInterface> instance;
@@ -946,6 +992,8 @@ std::string GcsServer::GetDebugState() const {
          << gcs_placement_group_manager_->DebugString() << "\n\n"
          << gcs_publisher_->DebugString() << "\n\n"
          << runtime_env_manager_->DebugString() << "\n\n"
+         // todo(haimi) 实现DebugString()
+         // << gcs_runtime_resource_manager_->DebugString() << "\n\n"
          << gcs_task_manager_->DebugString() << "\n\n"
          << gcs_autoscaler_state_manager_->DebugString() << "\n\n";
   return stream.str();

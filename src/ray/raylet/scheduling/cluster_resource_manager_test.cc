@@ -24,12 +24,16 @@ NodeResources CreateNodeResources(double available_cpu,
                                   double total_cpu,
                                   double available_custom_resource = 0,
                                   double total_custom_resource = 0,
+                                  double runtime_cpu = 0,
+                                  double runtime_memory = 0,
                                   bool object_pulls_queued = false) {
   NodeResources resources;
   resources.available.Set(ResourceID::CPU(), available_cpu);
   resources.total.Set(ResourceID::CPU(), total_cpu);
   resources.available.Set(scheduling::ResourceID("CUSTOM"), available_custom_resource);
   resources.total.Set(scheduling::ResourceID("CUSTOM"), total_custom_resource);
+  resources.runtime.Set(scheduling::ResourceID::RuntimeCPU(), runtime_cpu);
+  resources.runtime.Set(scheduling::ResourceID::RuntimeMemory(), runtime_memory);
   resources.object_pulls_queued = object_pulls_queued;
   return resources;
 }
@@ -51,6 +55,8 @@ struct ClusterResourceManagerTest : public ::testing::Test {
                                                  /*total_cpu*/ 1,
                                                  /*available_custom*/ 1,
                                                  /*total_custom*/ 1,
+                                                 /*runtime_cpu*/ 0.5,
+                                                 /*runtime_memory*/ 0.5,
                                                  /*object_pulls_queued*/ true));
   }
   scheduling::NodeID node0 = scheduling::NodeID(0);
@@ -192,6 +198,41 @@ TEST_F(ClusterResourceManagerTest, UpdateNodeNormalTaskResources) {
   resources_data.set_resources_normal_task_timestamp(absl::GetCurrentTimeNanos());
   manager->UpdateNodeNormalTaskResources(node0, resources_data);
   ASSERT_TRUE(node_resources.normal_task_resources.Get(ResourceID::CPU()) == 0.8);
+}
+
+TEST_F(ClusterResourceManagerTest, UpdateClusterRuntimeResources) {
+  const auto &node1_resources = manager->GetNodeResources(node1);
+  ASSERT_TRUE(node1_resources.runtime.Get(ResourceID::RuntimeCPU()) == 0);
+  ASSERT_TRUE(node1_resources.runtime.Get(ResourceID::RuntimeMemory()) == 0);
+
+  const auto &node2_resources = manager->GetNodeResources(node2);
+  ASSERT_TRUE(node2_resources.runtime.Get(ResourceID::RuntimeCPU()) == 0.5);
+  ASSERT_TRUE(node2_resources.runtime.Get(ResourceID::RuntimeMemory()) == 0.5);
+
+  absl::flat_hash_map<int, ResourceRequest> node1_worker_runtime_resources;
+  node1_worker_runtime_resources[1] = ResourceMapToResourceRequest(
+      {{ResourceID::RuntimeCPU(), 0.1}, {ResourceID::RuntimeMemory(), 0.4}}, false);
+  node1_worker_runtime_resources[2] = ResourceMapToResourceRequest(
+      {{ResourceID::RuntimeCPU(), 0.2}, {ResourceID::RuntimeMemory(), 0.3}}, false);
+  absl::flat_hash_map<scheduling::NodeID, absl::flat_hash_map<int, ResourceRequest>>
+      resources_to_update;
+  resources_to_update[node1] = node1_worker_runtime_resources;
+
+  absl::flat_hash_map<int, ResourceRequest> node2_worker_runtime_resources;
+  node2_worker_runtime_resources[1] = ResourceMapToResourceRequest(
+      {{ResourceID::RuntimeCPU(), 0.2}, {ResourceID::RuntimeMemory(), 0.3}}, false);
+  node2_worker_runtime_resources[2] = ResourceMapToResourceRequest(
+      {{ResourceID::RuntimeCPU(), 0.3}, {ResourceID::RuntimeMemory(), 0.3}}, false);
+  resources_to_update[node2] = node2_worker_runtime_resources;
+  manager->UpdateClusterRuntimeResources(resources_to_update);
+
+  const auto &updated_node1_resources = manager->GetNodeResources(node1);
+  ASSERT_TRUE(updated_node1_resources.runtime.Get(ResourceID::RuntimeCPU()) == 0.3);
+  ASSERT_TRUE(updated_node1_resources.runtime.Get(ResourceID::RuntimeMemory()) == 0.7);
+
+  const auto &updated_node2_resources = manager->GetNodeResources(node2);
+  ASSERT_TRUE(updated_node2_resources.runtime.Get(ResourceID::RuntimeCPU()) == 0.5);
+  ASSERT_TRUE(updated_node2_resources.runtime.Get(ResourceID::RuntimeMemory()) == 0.6);
 }
 
 }  // namespace ray

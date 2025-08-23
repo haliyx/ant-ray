@@ -175,7 +175,8 @@ void GcsResourceManager::HandleGetAllTotalResources(
   GCS_RPC_SEND_REPLY(send_reply_callback, reply, Status::OK());
   ++counts_[CountType::GET_All_TOTAL_RESOURCES_REQUEST];
 }
-
+// todo(haimi) GcsResourceManager::UpdateFromResourceView:
+// 根据节点上报的资源信息更新gcs资源视图
 void GcsResourceManager::UpdateFromResourceView(
     const NodeID &node_id,
     const syncer::ResourceViewSyncMessage &resource_view_sync_message) {

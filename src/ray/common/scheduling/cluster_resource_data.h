@@ -307,9 +307,10 @@ class NodeResources {
  public:
   NodeResources() {}
   NodeResources(const NodeResourceSet &resources)
-      : total(resources), available(resources) {}
+      : total(resources), available(resources), runtime(NodeResourceSet()) {}
   NodeResourceSet total;
   NodeResourceSet available;
+  NodeResourceSet runtime;
   /// Only used by light resource report.
   ResourceSet load;
   /// Resources owned by normal tasks.
@@ -367,12 +368,14 @@ class NodeResourceInstances {
  public:
   NodeResourceInstanceSet available;
   NodeResourceInstanceSet total;
+  NodeResourceInstanceSet runtime;
   // The key-value labels of this node.
   absl::flat_hash_map<std::string, std::string> labels;
 
   /// Extract available resource instances.
   const NodeResourceInstanceSet &GetAvailableResourceInstances() const;
   const NodeResourceInstanceSet &GetTotalResourceInstances() const;
+  const NodeResourceInstanceSet &GetRuntimeResourceInstances() const;
   /// Returns if this equals another node resources.
   bool operator==(const NodeResourceInstances &other);
   /// Returns human-readable string for these resources.

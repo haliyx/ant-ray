@@ -267,6 +267,34 @@ bool ClusterResourceManager::UpdateNodeNormalTaskResources(
   return false;
 }
 
+void ClusterResourceManager::UpdateClusterRuntimeResources(
+    const absl::flat_hash_map<scheduling::NodeID,
+                              absl::flat_hash_map<int, ResourceRequest>> resources) {
+  for (const auto &node_entry : resources) {
+    const scheduling::NodeID &node_id = node_entry.first;
+    const auto &worker_runtime_resources = node_entry.second;
+
+    ResourceRequest node_resource_request = ResourceRequest();
+    for (const auto &iter : worker_runtime_resources) {
+      const auto &resource_request = iter.second;
+      node_resource_request += resource_request;
+    }
+    auto it = nodes_.find(node_id);
+    if (it == nodes_.end()) {
+      RAY_LOG(WARNING) << "Node " << node_id << " not found, maybe it's dead.";
+      continue;
+    }
+
+    NodeResources *resources = it->second.GetMutableLocalView();
+    for (const auto &resource_id : node_resource_request.ResourceIds()) {
+      FixedPoint value = node_resource_request.Get(resource_id);
+
+      // Update the runtime resources of the node.
+      resources->runtime.Set(resource_id, value);
+    }
+  }
+}
+
 std::string ClusterResourceManager::DebugString(
     std::optional<size_t> max_num_nodes_to_include) const {
   std::stringstream buffer;

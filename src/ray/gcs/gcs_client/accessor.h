@@ -533,6 +533,15 @@ class NodeResourceInfoAccessor {
       const std::optional<std::string> &virtual_cluster_id,
       const MultiItemCallback<rpc::TotalResources> &callback);
 
+  // /// Subscribe to node resource changes.
+  // ///
+  // /// \param subscribe Callback that will be called when any resource is updated.
+  // /// \param done Callback that will be called when subscription is complete.
+  // /// \return Status
+  // virtual Status AsyncSubscribeToResources(
+  //     const ItemCallback<rpc::NodeResourceChange> &subscribe, const StatusCallback
+  //     &callback);
+
   /// Get draining nodes from GCS asynchronously.
   ///
   /// \param callback Callback that will be called after lookup finishes.

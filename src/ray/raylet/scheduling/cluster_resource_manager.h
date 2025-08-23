@@ -120,6 +120,11 @@ class ClusterResourceManager {
   bool UpdateNodeNormalTaskResources(scheduling::NodeID node_id,
                                      const rpc::ResourcesData &resource_data);
 
+  /// Update node runtime resources.
+  void UpdateClusterRuntimeResources(
+      const absl::flat_hash_map<scheduling::NodeID,
+                                absl::flat_hash_map<int, ResourceRequest>> resources);
+
   /// Return if the node is tracked.
   bool HasNode(const scheduling::NodeID &node_id) const {
     return nodes_.count(node_id) > 0;

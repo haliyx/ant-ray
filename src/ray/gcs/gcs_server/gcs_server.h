@@ -28,6 +28,7 @@
 #include "ray/gcs/gcs_server/gcs_kv_manager.h"
 #include "ray/gcs/gcs_server/gcs_redis_failure_detector.h"
 #include "ray/gcs/gcs_server/gcs_resource_manager.h"
+#include "ray/gcs/gcs_server/gcs_runtime_resource_manager.h"
 #include "ray/gcs/gcs_server/gcs_server_io_context_policy.h"
 #include "ray/gcs/gcs_server/gcs_table_storage.h"
 #include "ray/gcs/gcs_server/gcs_task_manager.h"
@@ -197,6 +198,9 @@ class GcsServer {
   /// Install event listeners.
   void InstallEventListeners();
 
+  /// Initialize runtime resource manager.
+  void InitRuntimeResourceManager();
+
  private:
   /// Gets the type of KV storage to use from config.
   StorageType GetStorageType() const;
@@ -232,6 +236,8 @@ class GcsServer {
   const GcsServerConfig config_;
   // Type of storage to use.
   const StorageType storage_type_;
+  /// The main io service to drive event posted from grpc threads.
+  instrumented_io_context &main_service_;
   /// The grpc server
   rpc::GrpcServer rpc_server_;
   /// The `ClientCallManager` object that is shared by all `NodeManagerWorkerClient`s.
@@ -288,6 +294,13 @@ class GcsServer {
   std::unique_ptr<UsageStatsClient> usage_stats_client_;
   /// The gcs worker manager.
   std::unique_ptr<GcsWorkerManager> gcs_worker_manager_;
+  /// The rumtime resource manager.
+  std::shared_ptr<GcsRuntimeResourceManager> gcs_runtime_resource_manager_;
+  std::unique_ptr<rpc::RuntimeResourceInfoGrpcService> runtime_resource_service_;
+  /// Worker info service.
+  std::unique_ptr<rpc::WorkerInfoGrpcService> worker_info_service_;
+  /// Placement Group info handler and service.
+  std::unique_ptr<rpc::PlacementGroupInfoGrpcService> placement_group_info_service_;
   /// Runtime env handler.
   std::unique_ptr<RuntimeEnvHandler> runtime_env_handler_;
   /// GCS PubSub handler.

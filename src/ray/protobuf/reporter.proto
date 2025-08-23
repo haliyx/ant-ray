@@ -76,6 +76,17 @@ message MemoryProfilingReply {
   optional string warning = 3;
 }
 
+message GetReportDataRequest {}
+
+message GetReportDataReply {
+  // success or not.
+  bool success = 1;
+  // The report data in msgpack.
+  bytes data = 2;
+  // The error message.
+  string error = 3;
+}
+
 message UpdateRuntimeResourceScheduleOptionsRequest {
   bool runtime_resource_scheduling_enabled = 1;
   int32 runtime_resources_calculation_interval_s = 2;
@@ -100,6 +111,8 @@ service ReporterService {
   rpc CpuProfiling(CpuProfilingRequest) returns (CpuProfilingReply);
   rpc GpuProfiling(GpuProfilingRequest) returns (GpuProfilingReply);
   rpc MemoryProfiling(MemoryProfilingRequest) returns (MemoryProfilingReply);
+  // Get report data.
+  rpc GetReportData(GetReportDataRequest) returns (GetReportDataReply);
   // Update runtime resource schedule options.
   rpc UpdateRuntimeResourceScheduleOptions(UpdateRuntimeResourceScheduleOptionsRequest)
       returns (UpdateRuntimeResourceScheduleOptionsReply);

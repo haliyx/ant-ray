@@ -127,7 +127,7 @@ class AgentManagerServiceHandlerImpl : public rpc::AgentManagerServiceHandler {
       rpc::SendReplyCallback send_reply_callback) override {
     RAY_LOG(DEBUG) << "HandleReportLocalRuntimeResources";
     agent_manager_->ReportLocalRuntimeResources(request);
-    reply->set_status(rpc::AGENT_RPC_STATUS_OK);
+    reply->set_status(rpc::REPORT_AGENT_RPC_STATUS_OK);
     send_reply_callback(ray::Status::OK(), nullptr, nullptr);
   }
 

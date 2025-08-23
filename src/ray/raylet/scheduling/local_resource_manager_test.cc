@@ -45,7 +45,8 @@ class LocalResourceManagerTest : public ::testing::Test {
           resource_usage_map) {
     for (auto &[resource, usage] : resource_usage_map) {
       RAY_LOG(INFO) << resource << ":"
-                    << "\n\tAvailable: " << usage.avail << "\n\tUsed: " << usage.used;
+                    << "\n\tAvailable: " << usage.avail << "\n\tUsed: " << usage.used
+                    << "\n\truntime: " << usage.runtime;
     }
   }
 
@@ -194,6 +195,29 @@ TEST_F(LocalResourceManagerTest, ObjectStoreMemoryDrainingTest) {
   // Free object store memory so that the node is drained and terminated.
   *used_object_store = 0;
   EXPECT_DEATH(manager->UpdateAvailableObjectStoreMemResource(), ".*");
+}
+
+TEST_F(LocalResourceManagerTest, UpdateRuntimeResourceTest) {
+  manager = std::make_unique<LocalResourceManager>(
+      local_node_id,
+      CreateNodeResources({{ResourceID::CPU(), 8.0}, {ResourceID::Memory(), 200.0}}),
+      nullptr,
+      nullptr,
+      [](const rpc::NodeDeathInfo &node_death_info) { _Exit(1); },
+      nullptr);
+
+  absl::flat_hash_map<int, ResourceRequest> worker_runtime_resources;
+  worker_runtime_resources[1] = ResourceMapToResourceRequest(
+      {{ResourceID::RuntimeCPU(), 3}, {ResourceID::RuntimeMemory(), 100.0}}, false);
+  worker_runtime_resources[2] = ResourceMapToResourceRequest(
+      {{ResourceID::RuntimeCPU(), 2}, {ResourceID::RuntimeMemory(), 50.0}}, false);
+  manager->UpdateRuntimeResource(worker_runtime_resources);
+  NodeResourceInstanceSet runtimeset = manager->GetLocalResources().runtime;
+
+  ASSERT_EQ(FixedPointVectorToString(runtimeset.Get(ResourceID::RuntimeCPU())),
+            "[50000]");
+  ASSERT_EQ(FixedPointVectorToString(runtimeset.Get(ResourceID::RuntimeMemory())),
+            "[1500000]");
 }
 
 TEST_F(LocalResourceManagerTest, IdleResourceTimeTest) {

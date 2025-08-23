@@ -744,6 +744,26 @@ service NodeResourceInfoGcsService {
   rpc GetDrainingNodes(GetDrainingNodesRequest) returns (GetDrainingNodesReply);
 }
 
+message NodeRuntimeResources {
+  bytes node_id = 1;
+  repeated WorkerRuntimeStat worker_stat_list = 2;
+}
+
+message ReportClusterRuntimeResourcesRequest {
+  repeated NodeRuntimeResources node_runtime_resources_list = 1;
+}
+
+message ReportClusterRuntimeResourcesReply {
+  GcsStatus status = 1;
+}
+
+service RuntimeResourceInfoGcsService {
+  // Report cluster runtime resources.
+  rpc ReportClusterRuntimeResources(ReportClusterRuntimeResourcesRequest)
+      returns (ReportClusterRuntimeResourcesReply);
+}
+
+
 message GcsStatus {
   int32 code = 1;
   string message = 2;

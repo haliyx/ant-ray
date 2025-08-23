@@ -34,7 +34,9 @@ enum PredefinedResourcesEnum {
   MEM,
   GPU,
   OBJECT_STORE_MEM,
-  PredefinedResourcesEnum_MAX
+  PredefinedResourcesEnum_MAX,
+  RUNTIME_CPU,
+  RUNTIME_MEM
 };
 
 const std::string kCPU_ResourceLabel = "CPU";
@@ -42,6 +44,8 @@ const std::string kGPU_ResourceLabel = "GPU";
 const std::string kObjectStoreMemory_ResourceLabel = "object_store_memory";
 const std::string kMemory_ResourceLabel = "memory";
 const std::string kBundle_ResourceLabel = "bundle";
+const std::string kCPU_RuntimeResourceLabel = "RUNTIME_CPU";
+const std::string kMemory_RuntimeResourceLabel = "RUNTIME_MEM";
 
 /// Class to map string IDs to unique integer IDs and back.
 class StringIdMap {
@@ -147,7 +151,9 @@ inline StringIdMap &BaseSchedulingID<SchedulingIDTag::Resource>::GetMap() {
     map->InsertOrDie(kCPU_ResourceLabel, CPU)
         .InsertOrDie(kGPU_ResourceLabel, GPU)
         .InsertOrDie(kObjectStoreMemory_ResourceLabel, OBJECT_STORE_MEM)
-        .InsertOrDie(kMemory_ResourceLabel, MEM);
+        .InsertOrDie(kMemory_ResourceLabel, MEM)
+        .InsertOrDie(kCPU_RuntimeResourceLabel, RUNTIME_CPU)
+        .InsertOrDie(kMemory_RuntimeResourceLabel, RUNTIME_MEM);
     return map;
   }()};
   return *map;
@@ -185,6 +191,16 @@ class ResourceID : public BaseSchedulingID<SchedulingIDTag::Resource> {
   /// Resource ID of object store memory.
   static ResourceID ObjectStoreMemory() {
     return ResourceID(PredefinedResourcesEnum::OBJECT_STORE_MEM);
+  }
+
+  /// Resource ID of runtime CPU.
+  static ResourceID RuntimeCPU() {
+    return ResourceID(PredefinedResourcesEnum::RUNTIME_CPU);
+  }
+
+  /// Resource ID of runtime memory.
+  static ResourceID RuntimeMemory() {
+    return ResourceID(PredefinedResourcesEnum::RUNTIME_MEM);
   }
 
   /// Used to allow tests to dynamically change unit-instance resource IDs.

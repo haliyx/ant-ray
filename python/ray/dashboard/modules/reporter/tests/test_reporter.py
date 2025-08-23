@@ -985,7 +985,6 @@ def test_task_get_memory_profile_missing_params(shutdown_only):
     wait_for_condition(verify, timeout=10)
 
 
-<<<<<<< HEAD
 def test_get_cluster_metadata(ray_start_with_dashboard):
     assert wait_until_server_available(ray_start_with_dashboard["webui_url"])
     webui_url = format_web_url(ray_start_with_dashboard["webui_url"])
@@ -999,7 +998,7 @@ def test_get_cluster_metadata(ray_start_with_dashboard):
     assert resp_data["pythonVersion"] == meta["python_version"]
     assert resp_data["rayVersion"] == meta["ray_version"]
     assert resp_data["rayInitCluster"] == meta["ray_init_cluster"]
-=======
+    
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
@@ -1025,6 +1024,34 @@ async def test_reporter_agent_loops_run_short_time(monkeypatch):
         pytest.fail("ReporterAgent.run did not complete in time (possible deadlock)")
 
     assert True
+
+
+@pytest.mark.asyncio
+async def test_update_workers_loop(monkeypatch):
+    dashboard_agent = MagicMock()
+    agent = ReporterAgent(dashboard_agent)
+
+    fake_worker = MagicMock()
+    fake_worker.pid = 12345
+    fake_worker.language = "PYTHON"
+    fake_worker.job_id = "jobid123"
+    reply = MagicMock()
+    reply.worker_info_list = [fake_worker]
+    # mock raylet_stub
+    agent._dashboard_agent.raylet_stub = AsyncMock()
+    agent._dashboard_agent.raylet_stub.GetWorkersInfo.return_value = reply
+    # mock psutil
+    with patch("psutil.pid_exists", return_value=True), patch(
+        "psutil.Process"
+    ) as mock_proc:
+        mock_proc.return_value.children.return_value = []
+
+        await asyncio.wait_for(agent._update_workers_loop_once(), timeout=1)
+        assert agent._dashboard_agent.raylet_stub.GetWorkersInfo.called
+        # assert "12345" in agent._worker_info
+        # item = agent._worker_info["12345"]
+        # assert item[1] == "PYTHON"
+        # assert item[2] == "jobid123"
 
 
 @pytest.mark.asyncio
@@ -1055,7 +1082,6 @@ async def test_report_local_runtime_resources_calls_raylet(monkeypatch):
         assert call_args.worker_stat_list[0].pid == 12345
         assert call_args.worker_stat_list[0].memory_tail == 1000
         assert call_args.worker_stat_list[0].cpu_tail == 0.5
->>>>>>> Runtime resource info collection, calculation and reporting on reporter agent
 
 
 if __name__ == "__main__":

@@ -159,6 +159,11 @@ namespace rpc {
 #define VIRTUAL_CLUSTER_SERVICE_RPC_HANDLER(HANDLER) \
   RPC_SERVICE_HANDLER(VirtualClusterInfoGcsService, HANDLER, -1)
 
+#define RUNTIME_RESOURCES_INFO_SERVICE_RPC_HANDLER(HANDLER) \
+  RPC_SERVICE_HANDLER(RuntimeResourceInfoGcsService,        \
+                      HANDLER,                              \
+                      RayConfig::instance().gcs_max_active_rpcs_per_handler())
+
 #define GCS_RPC_SEND_REPLY(send_reply_callback, reply, status)        \
   reply->mutable_status()->set_code(static_cast<int>(status.code())); \
   reply->mutable_status()->set_message(status.message());             \
@@ -798,6 +803,39 @@ class VirtualClusterInfoGrpcService : public GrpcService {
   VirtualClusterInfoGcsServiceHandler &service_handler_;
 };
 
+class RuntimeResourceInfoGcsServiceHandler {
+ public:
+  virtual ~RuntimeResourceInfoGcsServiceHandler() = default;
+
+  virtual void HandleReportClusterRuntimeResources(
+      ReportClusterRuntimeResourcesRequest request,
+      ReportClusterRuntimeResourcesReply *reply,
+      SendReplyCallback send_reply_callback) = 0;
+};
+
+class RuntimeResourceInfoGrpcService : public GrpcService {
+ public:
+  explicit RuntimeResourceInfoGrpcService(instrumented_io_context &io_service,
+                                          RuntimeResourceInfoGcsServiceHandler &handler)
+      : GrpcService(io_service), service_handler_(handler) {}
+
+ protected:
+  grpc::Service &GetGrpcService() override { return service_; }
+
+  void InitServerCallFactories(
+      const std::unique_ptr<grpc::ServerCompletionQueue> &cq,
+      std::vector<std::unique_ptr<ServerCallFactory>> *server_call_factories,
+      const ClusterID &cluster_id) override {
+    RUNTIME_RESOURCES_INFO_SERVICE_RPC_HANDLER(ReportClusterRuntimeResources);
+  }
+
+ private:
+  /// The grpc async service object.
+  RuntimeResourceInfoGcsService::AsyncService service_;
+  /// The service handler that actually handle the requests.
+  RuntimeResourceInfoGcsServiceHandler &service_handler_;
+};
+
 using JobInfoHandler = JobInfoGcsServiceHandler;
 using ActorInfoHandler = ActorInfoGcsServiceHandler;
 using NodeInfoHandler = NodeInfoGcsServiceHandler;
@@ -809,6 +847,7 @@ using InternalPubSubHandler = InternalPubSubGcsServiceHandler;
 using RuntimeEnvHandler = RuntimeEnvGcsServiceHandler;
 using TaskInfoHandler = TaskInfoGcsServiceHandler;
 using VirtualClusterInfoHandler = VirtualClusterInfoGcsServiceHandler;
+using RuntimeResourceHandler = RuntimeResourceInfoGcsServiceHandler;
 
 }  // namespace rpc
 }  // namespace ray

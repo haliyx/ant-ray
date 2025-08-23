@@ -161,6 +161,7 @@ std::string NodeResources::DebugString() const {
   std::stringstream buffer;
   buffer << "{\"total\":" << total.DebugString();
   buffer << "}, \"available\": " << available.DebugString();
+  buffer << "}, \"runtime\": " << runtime.DebugString();
   buffer << "}, \"labels\":{";
   for (const auto &[key, value] : labels) {
     buffer << "\"" << key << "\":\"" << value << "\",";
@@ -181,6 +182,7 @@ std::string NodeResourceInstances::DebugString() const {
   std::stringstream buffer;
   buffer << "{\"total\":" << total.DebugString();
   buffer << "}, \"available\": " << available.DebugString();
+  buffer << "}, \"runtime\": " << runtime.DebugString();
   buffer << "}, \"labels\":{";
   for (const auto &[key, value] : labels) {
     buffer << "\"" << key << "\":\"" << value << "\",";
@@ -197,5 +199,10 @@ const NodeResourceInstanceSet &NodeResourceInstances::GetAvailableResourceInstan
 const NodeResourceInstanceSet &NodeResourceInstances::GetTotalResourceInstances() const {
   return this->total;
 };
+
+const NodeResourceInstanceSet &NodeResourceInstances::GetRuntimeResourceInstances()
+    const {
+  return this->runtime;
+}
 
 }  // namespace ray

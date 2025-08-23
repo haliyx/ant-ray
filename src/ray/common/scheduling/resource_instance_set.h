@@ -39,6 +39,10 @@ class NodeResourceInstanceSet {
   /// Set a node resource to the given per-instance values.
   NodeResourceInstanceSet &Set(ResourceID resource_id, std::vector<FixedPoint> instances);
 
+  // /// Set runtime resources to the given per-instance values. Only for rumtime
+  // resources. NodeResourceInstanceSet &SetRuntimeResources(ResourceID resource_id,
+  // std::vector<FixedPoint> instances);
+
   /// Remove the specified resource.
   void Remove(ResourceID resource_id);
 
@@ -161,6 +165,10 @@ class NodeResourceInstanceSet {
 
   /// Map from the resource IDs to the resource instance values.
   absl::flat_hash_map<ResourceID, std::vector<FixedPoint>> resources_;
+
+  // /// Map from the resource IDs to the resource instance values for runtime resources.
+  // /// The runtime resources are used resources.
+  // absl::flat_hash_map<ResourceID, std::vector<FixedPoint>> runtime_resources_;
 
   /// This is a derived map from the resources_ map. The map aggregates all the current
   /// placement group indexed resources in resources_ by their original resource id and

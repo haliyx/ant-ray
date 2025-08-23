@@ -45,6 +45,8 @@ message ResourceViewSyncMessage {
   int64 draining_deadline_timestamp_ms = 6;
   // Why the node is not idle.
   repeated string node_activity = 7;
+  // Runtime resource information on this node manager
+  map<string, double> runtime_resource = 8;
 }
 
 message RaySyncMessage {

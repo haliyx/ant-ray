@@ -154,6 +154,10 @@ class NodeResourceSet {
   /// Set a node resource to the given value.
   NodeResourceSet &Set(ResourceID resource_id, FixedPoint value);
 
+  // /// Set runtime resources to the given per-instance values. Only for rumtime
+  // resources. NodeResourceSet &SetRuntimeResources(ResourceID resource_id, FixedPoint
+  // value);
+
   /// Get the value of a node resource.
   FixedPoint Get(ResourceID resource_id) const;
 
@@ -195,6 +199,10 @@ class NodeResourceSet {
   /// If the resource value is the default value for the resource
   /// it will be removed from the map.
   absl::flat_hash_map<ResourceID, FixedPoint> resources_;
+
+  // /// Map from the resource IDs to the resource instance values for runtime resources.
+  // /// The runtime resources are used resources.
+  // absl::flat_hash_map<ResourceID, FixedPoint> runtime_resources_;
 };
 
 }  // namespace ray

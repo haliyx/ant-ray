@@ -37,6 +37,8 @@ enum ChannelType {
   GCS_JOB_CHANNEL = 4;
   /// A channel for node info.
   GCS_NODE_INFO_CHANNEL = 5;
+  /// A channel for node resources.
+  /// GCS_NODE_RESOURCE_CHANNEL = 6;
   /// A channel for worker changes, currently only for worker failures.
   GCS_WORKER_DELTA_CHANNEL = 6;
   /// A channel for errors from various Ray components.
@@ -54,7 +56,7 @@ enum ChannelType {
 ///
 
 message PubMessage {
-  reserved 10, 14;
+  reserved 14;
   /// Channel type for this publish message.
   ChannelType channel_type = 1;
   /// The key id (e.g., object id) in bytes.
@@ -67,6 +69,7 @@ message PubMessage {
     ActorTableData actor_message = 7;
     JobTableData job_message = 8;
     GcsNodeInfo node_info_message = 9;
+    NodeResourceChange node_resource_message = 10;
     WorkerDeltaData worker_delta_message = 11;
     ErrorTableData error_info_message = 12;
     LogBatch log_batch_message = 13;

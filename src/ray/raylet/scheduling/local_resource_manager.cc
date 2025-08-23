@@ -258,6 +258,7 @@ NodeResources LocalResourceManager::ToNodeResources() const {
   NodeResources node_resources;
   node_resources.available = local_resources_.available.ToNodeResourceSet();
   node_resources.total = local_resources_.total.ToNodeResourceSet();
+  node_resources.runtime = local_resources_.runtime.ToNodeResourceSet();
   node_resources.labels = local_resources_.labels;
   node_resources.is_draining = IsLocalNodeDraining();
   node_resources.draining_deadline_timestamp_ms = GetDrainingDeadline();
@@ -297,10 +298,32 @@ void LocalResourceManager::UpdateAvailableObjectStoreMemResource() {
   }
 }
 
+void LocalResourceManager::UpdateRuntimeResource(
+    const absl::flat_hash_map<int, ResourceRequest> &worker_runtime_resources) {
+  ResourceRequest node_resource_request = ResourceRequest();
+  for (const auto &iter : worker_runtime_resources) {
+    const auto &resource_request = iter.second;
+    node_resource_request += resource_request;
+  }
+
+  // Update the runtime resources of the local node.
+  for (const auto &resource_id : node_resource_request.ResourceIds()) {
+    FixedPoint instances = node_resource_request.Get(resource_id);
+    std::vector<FixedPoint> instances_vector;
+    instances_vector.push_back(instances);
+
+    // Update the runtime resources of the local node.
+    local_resources_.runtime.Set(resource_id, instances_vector);
+
+    // local_resources_.runtime.SetRuntimeResources(resource_id, instances_vector);
+  }
+  OnResourceOrStateChanged();
+}
+
 double LocalResourceManager::GetLocalAvailableCpus() const {
   return local_resources_.available.Sum(ResourceID::CPU()).Double();
 }
-
+// todo local resource manager 填充资源
 void LocalResourceManager::PopulateResourceViewSyncMessage(
     syncer::ResourceViewSyncMessage &resource_view_sync_message) const {
   NodeResources resources = ToNodeResources();
@@ -357,7 +380,7 @@ void LocalResourceManager::PopulateResourceViewSyncMessage(
     }
   }
 }
-
+// todo(haimi) LocalResourceManager::CreateSyncMessage: 需要填充真实资源信息
 std::optional<syncer::RaySyncMessage> LocalResourceManager::CreateSyncMessage(
     int64_t after_version, syncer::MessageType message_type) const {
   RAY_CHECK_EQ(message_type, syncer::MessageType::RESOURCE_VIEW);
@@ -425,6 +448,9 @@ LocalResourceManager::GetResourceUsageMap() const {
                              .GetResourceMap();
   const auto total_map =
       local_resources.GetTotalResourceInstances().ToNodeResourceSet().GetResourceMap();
+
+  const auto runtime_map =
+      local_resources.GetRuntimeResourceInstances().ToNodeResourceSet().GetResourceMap();
 
   absl::flat_hash_map<std::string, ResourceUsage> resource_usage_map;
   for (const auto &it : total_map) {

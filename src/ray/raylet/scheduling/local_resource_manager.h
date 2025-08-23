@@ -128,6 +128,9 @@ class LocalResourceManager : public syncer::ReporterInterface {
 
   double GetLocalAvailableCpus() const;
 
+  void UpdateRuntimeResource(
+      const absl::flat_hash_map<int, ResourceRequest> &worker_runtime_resources);
+
   /// Return human-readable string for this scheduler state.
   std::string DebugString() const;
 
@@ -170,6 +173,7 @@ class LocalResourceManager : public syncer::ReporterInterface {
   struct ResourceUsage {
     double avail;
     double used;
+    double runtime;
     // TODO(sang): Add PG avail & PG used.
   };
 
@@ -252,7 +256,7 @@ class LocalResourceManager : public syncer::ReporterInterface {
   FRIEND_TEST(ClusterResourceSchedulerTest, CustomResourceInstanceTest);
   FRIEND_TEST(ClusterResourceSchedulerTest, TaskGPUResourceInstancesTest);
   FRIEND_TEST(ClusterResourceSchedulerTest, ObjectStoreMemoryUsageTest);
-
+  FRIEND_TEST(ClusterResourceSchedulerTest, UpdateRuntimeResourceTest);
   friend class LocalResourceManagerTest;
   FRIEND_TEST(LocalResourceManagerTest, BasicGetResourceUsageMapTest);
   FRIEND_TEST(LocalResourceManagerTest, IdleResourceTimeTest);

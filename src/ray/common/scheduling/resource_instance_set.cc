@@ -117,6 +117,15 @@ NodeResourceInstanceSet &NodeResourceInstanceSet::Set(ResourceID resource_id,
   return *this;
 }
 
+// NodeResourceInstanceSet &NodeResourceInstanceSet::SetRuntimeResources(
+//     ResourceID resource_id, std::vector<FixedPoint> instances) {
+//   RAY_CHECK(resource_id.Binary() == ResourceID::RuntimeCPU().Binary() ||
+//             resource_id.Binary() == ResourceID::RuntimeMemory().Binary());
+//   RAY_CHECK(!instances.empty());
+//   runtime_resources_[resource_id] = std::move(instances);
+//   return *this;
+// }
+
 FixedPoint NodeResourceInstanceSet::Sum(ResourceID resource_id) const {
   auto it = resources_.find(resource_id);
   if (it == resources_.end()) {
