@@ -47,6 +47,7 @@
 #include "ray/raylet/virtual_cluster_manager.h"
 #include "ray/raylet/wait_manager.h"
 #include "ray/raylet/worker_killing_policy.h"
+#include "ray/raylet/worker_killing_policy_resource_violation.h"
 #include "ray/raylet/worker_pool.h"
 #include "ray/raylet_client/raylet_client.h"
 #include "ray/rpc/agent_manager/agent_manager_server.h"

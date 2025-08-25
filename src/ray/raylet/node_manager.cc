@@ -3049,6 +3049,7 @@ MemoryUsageRefreshCallback NodeManager::CreateMemoryUsageRefreshCallback() {
             << "worker pid: " << high_memory_eviction_target_->GetProcess().GetId();
       } else {
         system_memory.process_used_bytes = MemoryMonitor::GetProcessMemoryUsage();
+        std::shared_ptr<WorkerInterface> worker_to_kill;
         auto workers = worker_pool_.GetAllRegisteredWorkers();
         if (workers.empty()) {
           RAY_LOG_EVERY_MS(WARNING, 5000)
@@ -3059,7 +3060,7 @@ MemoryUsageRefreshCallback NodeManager::CreateMemoryUsageRefreshCallback() {
         }
         auto worker_to_kill_and_should_retry =
             worker_killing_policy_->SelectWorkerToKill(workers, system_memory);
-        auto worker_to_kill = worker_to_kill_and_should_retry.first;
+        worker_to_kill = worker_to_kill_and_should_retry.first;
         bool should_retry = worker_to_kill_and_should_retry.second;
         if (worker_to_kill == nullptr) {
           RAY_LOG_EVERY_MS(WARNING, 5000) << "Worker killer did not select a worker to "

@@ -624,6 +624,7 @@ ray_cc_library(
         "src/ray/raylet/worker_killing_policy.cc",
         "src/ray/raylet/worker_killing_policy_group_by_owner.cc",
         "src/ray/raylet/worker_killing_policy_retriable_fifo.cc",
+        "src/ray/raylet/worker_killing_policy_resource_violation.cc",
         "src/ray/raylet/virtual_cluster_manager.cc",
     ],
     hdrs = [
@@ -637,6 +638,7 @@ ray_cc_library(
         "src/ray/raylet/worker_killing_policy.h",
         "src/ray/raylet/worker_killing_policy_group_by_owner.h",
         "src/ray/raylet/worker_killing_policy_retriable_fifo.h",
+        "src/ray/raylet/worker_killing_policy_resource_violation.h",
         "src/ray/raylet/virtual_cluster_manager.h",
     ],
     linkopts = select({

@@ -121,6 +121,7 @@ class WorkerInterface {
 
   virtual void UpdateRuntimeResources(const ResourceRequest &resources) = 0;
   virtual const ResourceRequest &GetRuntimeResources() const = 0;
+  virtual double GetResourceViolation() = 0;
 
  protected:
   virtual void SetStartupToken(StartupToken startup_token) = 0;
@@ -266,6 +267,8 @@ class Worker : public WorkerInterface {
     resource_violation_ = -1.0;
   }
   const ResourceRequest &GetRuntimeResources() const { return runtime_resources_; }
+  
+  double GetResourceViolation();
 
  protected:
   void SetStartupToken(StartupToken startup_token);
