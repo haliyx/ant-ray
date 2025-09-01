@@ -994,7 +994,6 @@ RAY_CONFIG(int64_t, gcs_dead_worker_data_keep_duration_ms, 600 * 1000)
 // Maximum batch size when delete dead data in gcs.
 RAY_CONFIG(int64_t, gcs_dead_data_max_batch_delete_size, 500)
 
-
 /// The maximum time in seconds that an actor task can wait in the scheduling queue
 /// for tasks with smaller sequence numbers to show up. If timed out, the task will
 /// be cancelled.
@@ -1020,4 +1019,3 @@ RAY_CONFIG(float, overcommit_ratio, 1.5)
 RAY_CONFIG(float, node_overcommit_ratio, 1.5)
 
 RAY_CONFIG(int64_t, job_runtime_resources_calc_interval_s, 60)
-

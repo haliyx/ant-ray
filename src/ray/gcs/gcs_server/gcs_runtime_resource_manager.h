@@ -50,10 +50,9 @@ class GcsRuntimeResourceManager : public rpc::RuntimeResourceHandler {
       ClusterResourceManager &cluster_resource_manager,
       std::function<void(const rpc::ReportClusterRuntimeResourcesRequest &)>
           cluster_runtime_resources_updated_callback);
-      //   std::shared_ptr<GcsJobDistribution> gcs_job_distribution,
+  //   std::shared_ptr<GcsJobDistribution> gcs_job_distribution,
 
   virtual ~GcsRuntimeResourceManager() = default;
-
 
   //   void RecordJobShorttermRuntimeResources(
   //       absl::flat_hash_map<
@@ -74,7 +73,6 @@ class GcsRuntimeResourceManager : public rpc::RuntimeResourceHandler {
       rpc::ReportClusterRuntimeResourcesReply *reply,
       rpc::SendReplyCallback send_reply_callback) override;
 
-
  private:
   /// The gcs table storage.
   // gcs::GcsTableStorage &gcs_table_storage_;
@@ -85,8 +83,6 @@ class GcsRuntimeResourceManager : public rpc::RuntimeResourceHandler {
   /// The callback for each update of the cluster runtime resources.
   std::function<void(const rpc::ReportClusterRuntimeResourcesRequest &)>
       cluster_runtime_resources_updated_callback_;
-
-
 };
 
 }  // namespace gcs

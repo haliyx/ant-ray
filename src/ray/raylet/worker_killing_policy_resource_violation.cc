@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ray/raylet/worker_killing_policy_retriable_fifo.h"
+#include "ray/raylet/worker_killing_policy_resource_violation.h"
 
 #include <gtest/gtest_prod.h>
 
@@ -23,14 +23,13 @@
 #include <utility>
 #include <vector>
 
-#include "ray/raylet/worker_killing_policy_resource_violation.h"
-
 #include "absl/container/flat_hash_map.h"
 #include "absl/time/time.h"
 #include "ray/common/asio/instrumented_io_context.h"
 #include "ray/common/asio/periodical_runner.h"
 #include "ray/raylet/worker.h"
 #include "ray/raylet/worker_killing_policy.h"
+#include "ray/raylet/worker_killing_policy_retriable_fifo.h"
 #include "ray/raylet/worker_pool.h"
 
 namespace ray {

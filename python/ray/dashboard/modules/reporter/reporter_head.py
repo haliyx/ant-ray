@@ -793,6 +793,7 @@ class ReportHead(SubprocessModule):
         return dashboard_optional_utils.rest_response(
             status_code=status_code, message=message
         )
+
     @async_loop_forever(reporter_consts.REPORTER_UPDATE_INTERVAL_MS / 1000)
     async def _get_node_stubs_from_gcs(self):
         option = ListApiOptions(detail=True, timeout=10)

@@ -255,6 +255,16 @@ ray_cc_library(
 )
 
 ray_cc_library(
+    name = "runtime_resource_scheduling_policy",
+    srcs = ["policy/runtime_resource_scheduling_policy.cc"],
+    hdrs = ["policy/runtime_resource_scheduling_policy.h"],
+    deps = [
+        ":hybrid_scheduling_policy",
+        ":scheduling_policy",
+    ],
+)
+
+ray_cc_library(
     name = "scorer",
     srcs = ["policy/scorer.cc"],
     hdrs = ["policy/scorer.h"],

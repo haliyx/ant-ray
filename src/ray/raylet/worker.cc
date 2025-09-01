@@ -222,22 +222,24 @@ void Worker::SetIsActorWorker(bool is_actor_worker) {
       << ", actual: " << is_actor_worker;
 }
 
-double Worker::GetResourceViolation(){
+double Worker::GetResourceViolation() {
   // resource_violation_ has not been calculated
-  if(resource_violation_ < 0){
-    if(!is_actor_worker_.has_value()){
+  if (resource_violation_ < 0) {
+    if (!is_actor_worker_.has_value()) {
       resource_violation_ = 0.0;
-    }else{
-      auto require_memory = 
-      *is_actor_worker_? lifetime_allocated_instances_->Sum(scheduling::ResourceID::Memory()): allocated_instances_->Sum(scheduling::ResourceID::Memory());
-      if(require_memory == 0){
+    } else {
+      auto require_memory =
+          *is_actor_worker_
+              ? lifetime_allocated_instances_->Sum(scheduling::ResourceID::Memory())
+              : allocated_instances_->Sum(scheduling::ResourceID::Memory());
+      if (require_memory == 0) {
         resource_violation_ = 0.0;
-      }else{
-        resource_violation_ = runtime_resources_.Get(scheduling::ResourceID::RuntimeMemory()).Double() / 
-                              require_memory.Double();
+      } else {
+        resource_violation_ =
+            runtime_resources_.Get(scheduling::ResourceID::RuntimeMemory()).Double() /
+            require_memory.Double();
       }
     }
-
   }
   return resource_violation_;
 }

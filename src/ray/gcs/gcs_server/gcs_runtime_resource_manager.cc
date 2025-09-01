@@ -20,27 +20,24 @@
 namespace ray {
 namespace gcs {
 
-
-GcsRuntimeResourceManager::GcsRuntimeResourceManager( 
-  // gcs::GcsTableStorage &gcs_table_storage,
-  ClusterResourceManager &cluster_resource_manager,
-  std::function<void(const rpc::ReportClusterRuntimeResourcesRequest &)>
-      cluster_runtime_resources_updated_callback)
-  // : gcs_table_storage_(gcs_table_storage),
-  : cluster_resource_manager_(cluster_resource_manager),
-    cluster_runtime_resources_updated_callback_(std::move(cluster_runtime_resources_updated_callback)){}
-
-
+GcsRuntimeResourceManager::GcsRuntimeResourceManager(
+    // gcs::GcsTableStorage &gcs_table_storage,
+    ClusterResourceManager &cluster_resource_manager,
+    std::function<void(const rpc::ReportClusterRuntimeResourcesRequest &)>
+        cluster_runtime_resources_updated_callback)
+    // : gcs_table_storage_(gcs_table_storage),
+    : cluster_resource_manager_(cluster_resource_manager),
+      cluster_runtime_resources_updated_callback_(
+          std::move(cluster_runtime_resources_updated_callback)) {}
 
 void GcsRuntimeResourceManager::HandleReportClusterRuntimeResources(
     rpc::ReportClusterRuntimeResourcesRequest request,
     rpc::ReportClusterRuntimeResourcesReply *reply,
-    rpc::SendReplyCallback send_reply_callback){
+    rpc::SendReplyCallback send_reply_callback) {
   RAY_LOG(DEBUG) << "HandleReportClusterRuntimeResources";
   cluster_runtime_resources_updated_callback_(request);
   GCS_RPC_SEND_REPLY(send_reply_callback, reply, Status::OK());
-  
-  
+
   // record_service_.post(
   //     [this, node_runtime_resources_map] {
   //       RecordRuntimeResources(node_runtime_resources_map);
@@ -54,8 +51,9 @@ void GcsRuntimeResourceManager::RecordRuntimeResources(
   if (node_runtime_resources_map->empty()) {
     return;
   }
-  auto cluster_node_resources_to_update = std::make_shared<
-      absl::flat_hash_map<scheduling::NodeID, absl::flat_hash_map<int, ResourceRequest>>>();
+  auto cluster_node_resources_to_update =
+      std::make_shared<absl::flat_hash_map<scheduling::NodeID,
+                                           absl::flat_hash_map<int, ResourceRequest>>>();
   for (const auto &entry : *node_runtime_resources_map) {
     const auto &node_id = entry.first;
     scheduling::NodeID node_id_obj(node_id.Binary());
@@ -66,15 +64,15 @@ void GcsRuntimeResourceManager::RecordRuntimeResources(
       double mem_tail = 1.0 * worker.memory_tail() / 1ULL;
       worker_resources.Set(scheduling::ResourceID::RuntimeMemory(), mem_tail);
       worker_resources.Set(scheduling::ResourceID::RuntimeCPU(),
-                            double(worker.cpu_tail() / 100.0));
+                           double(worker.cpu_tail() / 100.0));
     }
     (*cluster_node_resources_to_update)[node_id_obj] = worker_runtime_resources;
   }
   if (!cluster_node_resources_to_update->empty()) {
-    cluster_resource_manager_.UpdateClusterRuntimeResources(std::move(*cluster_node_resources_to_update));
+    cluster_resource_manager_.UpdateClusterRuntimeResources(
+        std::move(*cluster_node_resources_to_update));
   }
 }
-
 
 }  // namespace gcs
 }  // namespace ray

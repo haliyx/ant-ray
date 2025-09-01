@@ -212,12 +212,10 @@ class DashboardAgent:
                 namespace=ray_constants.KV_NAMESPACE_DASHBOARD,
             )
 
-
         self.raylet_stub = agent_manager_pb2_grpc.AgentManagerServiceStub(
             self.aiogrpc_raylet_channel
         )
         await asyncio.gather(put_by_node_id, put_by_ip)
-        
 
         tasks = [m.run(self.server) for m in modules]
 

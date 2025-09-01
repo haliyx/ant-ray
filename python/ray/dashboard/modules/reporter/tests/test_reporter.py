@@ -998,7 +998,8 @@ def test_get_cluster_metadata(ray_start_with_dashboard):
     assert resp_data["pythonVersion"] == meta["python_version"]
     assert resp_data["rayVersion"] == meta["ray_version"]
     assert resp_data["rayInitCluster"] == meta["ray_init_cluster"]
-    
+
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 

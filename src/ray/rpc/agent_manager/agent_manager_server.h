@@ -23,7 +23,7 @@
 #include "src/ray/protobuf/agent_manager.grpc.pb.h"
 #include "src/ray/protobuf/agent_manager.pb.h"
 
-namespace ray { 
+namespace ray {
 namespace rpc {
 
 #define RAY_AGENT_MANAGER_RPC_HANDLERS                            \

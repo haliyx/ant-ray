@@ -267,7 +267,7 @@ class Worker : public WorkerInterface {
     resource_violation_ = -1.0;
   }
   const ResourceRequest &GetRuntimeResources() const { return runtime_resources_; }
-  
+
   double GetResourceViolation();
 
  protected:
